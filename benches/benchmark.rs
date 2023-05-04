@@ -1,5 +1,6 @@
 use async_recursion::async_recursion;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::future::Future;
 
 const FIB_NUMBER: u64 = 40;
 
@@ -11,16 +12,17 @@ fn sync_fibonacci(n: u64) -> u64 {
     sync_fibonacci(n - 1) + sync_fibonacci(n - 2)
 }
 
-#[async_recursion]
-async fn async_fibonacci(n: u64) -> u64 {
+async fn async_fibonacci<T: Future<Output = u64>>(n: u64) -> Box<T> {
     if n == 1 || n == 2 {
-        return 1;
+        return Box::new(async { 1 });
     }
 
-    let n1 = tokio::spawn(async_fibonacci(n - 1));
-    let n2 = tokio::spawn(async_fibonacci(n - 2));
+    // let n1 = tokio::spawn(async { async_fibonacci(n - 1) });
+    // let n2 = tokio::spawn(async { async_fibonacci(n - 2) });
 
-    n1.await.unwrap() + n2.await.unwrap()
+    Box::new(*async_fibonacci(n - 1).await + *async_fibonacci(n - 2).await)
+
+    // n1.await + n2.await
 }
 
 fn async_fib(c: &mut Criterion) {
