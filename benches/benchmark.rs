@@ -12,17 +12,18 @@ fn sync_fibonacci(n: u64) -> u64 {
     sync_fibonacci(n - 1) + sync_fibonacci(n - 2)
 }
 
-async fn async_fibonacci<T: Future<Output = u64>>(n: u64) -> Box<T> {
+#[async_recursion]
+async fn async_fibonacci(n: u64) -> u64 {
     if n == 1 || n == 2 {
-        return Box::new(async { 1 });
+        return 1;
     }
 
-    // let n1 = tokio::spawn(async { async_fibonacci(n - 1) });
-    // let n2 = tokio::spawn(async { async_fibonacci(n - 2) });
+    let n1 = tokio::spawn(async move { async_fibonacci(n - 1).await });
+    let n2 = tokio::spawn(async move { async_fibonacci(n - 2).await });
 
-    Box::new(*async_fibonacci(n - 1).await + *async_fibonacci(n - 2).await)
+    // Box::new(*async_fibonacci(n - 1).await + *async_fibonacci(n - 2).await)
 
-    // n1.await + n2.await
+    n1.await.unwrap() + n2.await.unwrap()
 }
 
 fn async_fib(c: &mut Criterion) {
@@ -40,5 +41,12 @@ fn sync_fib(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, async_fib, sync_fib);
+criterion_group! {
+    name = benches;
+    // This can be any expression that returns a `Criterion` object.
+    config = Criterion::default().sample_size(10);
+    targets = async_fib, sync_fib
+}
+
+// criterion_group!(benches, async_fib, sync_fib);
 criterion_main!(benches);

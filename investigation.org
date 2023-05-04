@@ -1,0 +1,259 @@
+#+title: Investigation
+
+* go
+go, trial 4
+
+#+begin_src go
+package main
+
+// import "fmt"
+
+func main() {
+    // result := make(chan int, 1)
+    // go fib(40, result)
+
+    basefib(40)
+
+    // value := basefib(40)
+
+    // value := <-result
+    // fmt.Printf("Value: %d\n", value)
+    // close(result)
+
+}
+
+func basefib(n int) int {
+    if (n == 1 || n == 2) {
+        return 1
+    }
+
+    return (basefib(n - 1) + basefib(n - 2))
+
+}
+#+end_src
+
+#+begin_quote
+Benchmark 1: go run test.go
+  Time (mean ± σ):     261.2 ms ±   1.1 ms    [User: 263.3 ms, System: 20.0 ms]
+  Range (min … max):   259.1 ms … 262.6 ms    11 runs
+#+end_quote
+
+go, trial 3
+
+#+begin_src go
+package main
+
+import "fmt"
+
+func main() {
+    // result := make(chan int, 1)
+    // go fib(40, result)
+
+    value := basefib(40)
+
+    // value := <-result
+    fmt.Printf("Value: %d\n", value)
+    // close(result)
+
+}
+
+func basefib(n int) int {
+    if (n == 1 || n == 2) {
+        return 1
+    }
+
+    return (basefib(n - 1) + basefib(n - 2))
+
+}
+#+end_src
+
+#+begin_quote
+❯ hyperfine "go run test.go"
+Benchmark 1: go run test.go
+  Time (mean ± σ):     295.9 ms ±   9.5 ms    [User: 315.7 ms, System: 42.3 ms]
+  Range (min … max):   280.1 ms … 306.0 ms    10 runs
+#+end_quote
+
+go, trial 2
+#+begin_src
+package main
+
+import "fmt"
+
+func main() {
+    result := make(chan int, 1)
+    go fib(40, result)
+
+    value := <-result
+    fmt.Printf("Value: %d\n", value)
+    close(result)
+
+}
+
+func fib(n int, result chan int) {
+    if (n == 1 || n == 2) {
+       result <- 1
+       return
+    }
+
+    a := make (chan int, 1)
+    go fib ((n - 1), a)
+
+    b := make (chan int, 1)
+    go fib ((n - 2), b)
+
+    value1 := <- a
+    close(a)
+
+    value2 := <- b
+    close(b)
+
+    result <- (value1 + value2)
+    return
+}
+#+end_src
+
+#+begin_quote
+❯ hyperfine "go run test.go"
+Benchmark 1: go run test.go
+  Time (mean ± σ):     26.477 s ±  0.935 s    [User: 561.162 s, System: 17.224 s]
+  Range (min … max):   24.945 s … 27.688 s    10 runs
+#+end_quote
+* rust
+#+begin_src rust
+use async_recursion::async_recursion;
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::future::Future;
+
+const FIB_NUMBER: u64 = 40;
+
+fn sync_fibonacci(n: u64) -> u64 {
+    if n == 1 || n == 2 {
+        return 1;
+    }
+
+    sync_fibonacci(n - 1) + sync_fibonacci(n - 2)
+}
+
+#[async_recursion]
+async fn async_fibonacci(n: u64) -> u64 {
+    if n == 1 || n == 2 {
+        return 1;
+    }
+
+    let n1 = tokio::spawn(async move { async_fibonacci(n - 1).await });
+    let n2 = tokio::spawn(async move { async_fibonacci(n - 2).await });
+
+    // Box::new(*async_fibonacci(n - 1).await + *async_fibonacci(n - 2).await)
+
+    n1.await.unwrap() + n2.await.unwrap()
+}
+
+fn async_fib(c: &mut Criterion) {
+    c.bench_with_input(BenchmarkId::new("async_fibonacci", 1), &1, |b, &_| {
+        // Insert a call to `to_async` to convert the bencher to async mode.
+        // The timing loops are the same as with the normal bencher.
+        b.to_async(tokio::runtime::Runtime::new().unwrap())
+            .iter(|| async_fibonacci(black_box(FIB_NUMBER)));
+    });
+}
+
+fn sync_fib(c: &mut Criterion) {
+    c.bench_function("sync_fibonacci", |b| {
+        b.iter(|| sync_fibonacci(black_box(FIB_NUMBER)))
+    });
+}
+
+criterion_group! {
+    name = benches;
+    // This can be any expression that returns a `Criterion` object.
+    config = Criterion::default().sample_size(10);
+    targets = async_fib, sync_fib
+}
+
+criterion_main!(benches);
+#+end_src
+
+the number of samples for the more expensive version was decreased to make running the experiment more practical.
+
+#+begin_quote
+Running benches/benchmark.rs (target/release/deps/benchmark-91e07db54e4965e5)
+Gnuplot not found, using plotters backend
+Benchmarking async_fibonacci/1: Warming up for 3.0000 s
+Warning: Unable to complete 10 samples in 5.0s. You may wish to increase target time to 3174.3s.
+async_fibonacci/1       time:   [304.58 s 308.28 s 312.13 s]
+                        change: [+12982% +13128% +13295%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+
+Benchmarking sync_fibonacci: Warming up for 3.0000 s
+Warning: Unable to complete 10 samples in 5.0s. You may wish to increase target time to 6.3s or enable flat sampling.
+sync_fibonacci          time:   [114.75 ms 114.99 ms 115.33 ms]
+                        change: [+1.7515% +1.9620% +2.2492%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 10 measurements (20.00%)
+  2 (20.00%) high mild
+#+end_quote
+
+before I made it spawn:
+#+begin_src rust
+use async_recursion::async_recursion;
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::future::Future;
+
+const FIB_NUMBER: u64 = 40;
+
+fn sync_fibonacci(n: u64) -> u64 {
+    if n == 1 || n == 2 {
+        return 1;
+    }
+
+    sync_fibonacci(n - 1) + sync_fibonacci(n - 2)
+}
+
+#[async_recursion]
+async fn async_fibonacci(n: u64) -> u64 {
+    if n == 1 || n == 2 {
+        return 1;
+    }
+
+    async_fibonacci(n - 1).await + async_fibonacci(n - 2).await
+}
+
+fn async_fib(c: &mut Criterion) {
+    c.bench_with_input(BenchmarkId::new("async_fibonacci", 1), &1, |b, &_| {
+        // Insert a call to `to_async` to convert the bencher to async mode.
+        // The timing loops are the same as with the normal bencher.
+        b.to_async(tokio::runtime::Runtime::new().unwrap())
+            .iter(|| async_fibonacci(black_box(FIB_NUMBER)));
+    });
+}
+
+fn sync_fib(c: &mut Criterion) {
+    c.bench_function("sync_fibonacci", |b| {
+        b.iter(|| sync_fibonacci(black_box(FIB_NUMBER)))
+    });
+}
+
+criterion_group!(benches, async_fib, sync_fib);
+criterion_main!(benches);
+#+end_src
+
+#+begin_quote
+    Running benches/benchmark.rs (target/release/deps/benchmark-91e07db54e4965e5)
+Gnuplot not found, using plotters backend
+Benchmarking async_fibonacci/1: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 230.4s, or reduce sample count to 10.
+async_fibonacci/1       time:   [2.3273 s 2.3305 s 2.3340 s]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking sync_fibonacci: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 11.3s, or reduce sample count to 40.
+sync_fibonacci          time:   [112.80 ms 112.85 ms 112.89 ms]
+Found 18 outliers among 100 measurements (18.00%)
+  1 (1.00%) low severe
+  6 (6.00%) low mild
+  10 (10.00%) high mild
+  1 (1.00%) high severe
+#+end_quote
