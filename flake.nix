@@ -39,6 +39,7 @@
             # get current rust toolchain defaults (this includes clippy and rustfmt)
             rust-custom-toolchain
             pkg-config
+            hyperfine
             cargo-edit
           ];
 
