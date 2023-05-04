@@ -5,4 +5,20 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "serial"
+path = "src/tests/serial.rs"
+
+[[bin]]
+name = "async"
+path = "src/tests/async.rs"
+
+[[bench]]
+name = "benchmark"
+harness = false
+path = "benches/benchmark.rs"
+
 [dependencies]
+async-recursion = "1.0.4"
+tokio = { version = "1.0.0", features = ["full"] }
+criterion = { version = "0.4", features = ["html_reports", "async_tokio"] }

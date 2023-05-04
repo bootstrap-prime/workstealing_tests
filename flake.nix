@@ -23,23 +23,22 @@
         pkgs = import nixpkgs { inherit system overlays; };
 
         rust-custom-toolchain = (pkgs.rust-bin.stable.latest.default.override {
-              extensions = [
-                "rust-src"
-                "rustfmt"
-                "llvm-tools-preview"
-                "rust-analyzer-preview"
-              ];
+          extensions = [
+            "rust-src"
+            "rustfmt"
+            "llvm-tools-preview"
+            "rust-analyzer-preview"
+          ];
         });
 
       in rec {
         devShell = pkgs.mkShell {
-          buildInputs = with pkgs; [
-          ];
+          buildInputs = with pkgs; [ openssl ];
 
           nativeBuildInputs = with pkgs; [
             # get current rust toolchain defaults (this includes clippy and rustfmt)
             rust-custom-toolchain
-
+            pkg-config
             cargo-edit
           ];
 
@@ -48,7 +47,7 @@
           RUST_BACKTRACE = 1;
         };
 
-        default = {};
+        default = { };
 
         checks = let
           craneLib =
