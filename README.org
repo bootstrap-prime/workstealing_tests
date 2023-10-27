@@ -34,7 +34,9 @@ func basefib(n int) int {
 
 #+begin_quote
 Benchmark 1: go run test.go
+
   Time (mean ± σ):     261.2 ms ±   1.1 ms    [User: 263.3 ms, System: 20.0 ms]
+
   Range (min … max):   259.1 ms … 262.6 ms    11 runs
 #+end_quote
 
@@ -69,9 +71,12 @@ func basefib(n int) int {
 
 #+begin_quote
 ❯ hyperfine "go run test.go"
+
 Benchmark 1: go run test.go
-  Time (mean ± σ):     295.9 ms ±   9.5 ms    [User: 315.7 ms, System: 42.3 ms]
-  Range (min … max):   280.1 ms … 306.0 ms    10 runs
+
+    Time (mean ± σ):     295.9 ms ±   9.5 ms    [User: 315.7 ms, System: 42.3 ms]
+
+    Range (min … max):   280.1 ms … 306.0 ms    10 runs
 #+end_quote
 
 go, trial 2
@@ -115,9 +120,12 @@ func fib(n int, result chan int) {
 
 #+begin_quote
 ❯ hyperfine "go run test.go"
+
 Benchmark 1: go run test.go
-  Time (mean ± σ):     26.477 s ±  0.935 s    [User: 561.162 s, System: 17.224 s]
-  Range (min … max):   24.945 s … 27.688 s    10 runs
+
+    Time (mean ± σ):     26.477 s ±  0.935 s    [User: 561.162 s, System: 17.224 s]
+
+    Range (min … max):   24.945 s … 27.688 s    10 runs
 #+end_quote
 * rust
 #+begin_src rust
